@@ -1,14 +1,3 @@
-// Use a generic Timestamp type so the shared package doesn't depend on Firebase
-export interface Timestamp {
-  seconds: number;
-  nanoseconds: number;
-  toDate(): Date;
-  toMillis(): number;
-  isEqual(other: Timestamp): boolean;
-  toJSON(): { seconds: number; nanoseconds: number; type: string };
-  valueOf(): string;
-}
-
 // ─── User ────────────────────────────────────────────────────
 export interface Address {
   id: string;
@@ -31,11 +20,10 @@ export interface UserProfile {
   photoURL?: string;
   role: UserRole;
   addresses: Address[];
-  fcmTokens: string[];
   stripeCustomerId?: string;
   notificationPreferences: NotificationPreferences;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface NotificationPreferences {
@@ -69,8 +57,8 @@ export interface Product {
   featured: boolean;
   active: boolean;
   seasonalOnly: boolean;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CareInfo {
@@ -107,7 +95,7 @@ export interface Cart {
   id: string;
   userId: string;
   items: CartItem[];
-  updatedAt: Timestamp;
+  updatedAt: string;
 }
 
 // ─── Wishlist ────────────────────────────────────────────────
@@ -115,7 +103,7 @@ export interface WishlistItem {
   productId: string;
   productName: string;
   productImage: string;
-  addedAt: Timestamp;
+  addedAt: string;
 }
 
 // ─── Order ───────────────────────────────────────────────────
@@ -129,7 +117,7 @@ export type OrderStatus =
 
 export interface OrderStatusEntry {
   status: OrderStatus;
-  timestamp: Timestamp;
+  timestamp: string;
   note?: string;
 }
 
@@ -153,15 +141,15 @@ export interface Order {
   deliveryFee: number;
   total: number;
   shippingAddress: Address;
-  deliveryDate?: Timestamp;
+  deliveryDate?: string;
   statusHistory: OrderStatusEntry[];
   currentStatus: OrderStatus;
   stripePaymentIntentId: string;
   refundId?: string;
   refundAmount?: number;
   notes?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Quote ───────────────────────────────────────────────────
@@ -187,8 +175,8 @@ export interface Quote {
   status: QuoteStatus;
   adminResponse?: string;
   estimatedPrice?: number;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Store ───────────────────────────────────────────────────
@@ -225,7 +213,7 @@ export interface PushNotification {
   data?: Record<string, string>;
   targetUserIds?: string[];
   broadcast: boolean;
-  sentAt: Timestamp;
+  sentAt: string;
   sentBy: string;
 }
 

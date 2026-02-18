@@ -1,7 +1,5 @@
 import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
-import { doc, updateDoc, arrayUnion } from "@react-native-firebase/firestore";
-import { messaging, db } from "./firebase";
+import { api } from "./api";
 
 // Configure notification handler for foreground
 Notifications.setNotificationHandler({
@@ -26,7 +24,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   return finalStatus === "granted";
 }
 
-export async function registerForPushNotifications(userId: string): Promise<string | null> {
+export async function registerForPushNotifications(): Promise<string | null> {
   const granted = await requestNotificationPermissions();
   if (!granted) {
     console.log("Notification permissions not granted");
@@ -34,32 +32,18 @@ export async function registerForPushNotifications(userId: string): Promise<stri
   }
 
   try {
-    // Get FCM token
-    const token = await messaging.getToken();
+    // Get Expo push token
+    const { data: token } = await Notifications.getExpoPushTokenAsync();
 
-    // Store token in user document
-    await updateDoc(doc(db, "users", userId), {
-      fcmTokens: arrayUnion(token),
-    });
+    // Register token with API
+    await api.post("/notifications/register-token", { token });
 
-    console.log("FCM token registered:", token.substring(0, 20) + "...");
+    console.log("Push token registered:", token.substring(0, 20) + "...");
     return token;
   } catch (error) {
     console.error("Error registering for notifications:", error);
     return null;
   }
-}
-
-export function onTokenRefresh(userId: string): () => void {
-  return messaging.onTokenRefresh(async (token) => {
-    try {
-      await updateDoc(doc(db, "users", userId), {
-        fcmTokens: arrayUnion(token),
-      });
-    } catch (error) {
-      console.error("Error updating token:", error);
-    }
-  });
 }
 
 export function addNotificationReceivedListener(

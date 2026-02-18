@@ -1,16 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  query,
-  orderBy,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import type { Product, Category, ProductSize, CareInfo } from "@palmtree/shared";
 import { generateSlug, generateId } from "@palmtree/shared";
 import {
@@ -187,40 +176,30 @@ function CategoryInlineForm({ category, onSave, onCancel, saving }: CategoryRowP
 // ─── Main Page ──────────────────────────────────────────────────
 
 export default function ProductsPage() {
-  // Data
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Category inline editing
-  const [catEditing, setCatEditing] = useState<string | null>(null); // id or "__new__"
+  const [catEditing, setCatEditing] = useState<string | null>(null);
   const [catSaving, setCatSaving] = useState(false);
   const [catSectionOpen, setCatSectionOpen] = useState(false);
 
-  // Product modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductFormData>(emptyFormData());
   const [imageInput, setImageInput] = useState("");
   const [careTipInput, setCareTipInput] = useState("");
 
-  // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
-  // ─── Fetch data ─────────────────────────────────────────────
-
   const fetchCategories = useCallback(async () => {
-    const q = query(collection(db, "categories"), orderBy("sortOrder", "asc"));
-    const snap = await getDocs(q);
-    const cats: Category[] = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Category));
+    const cats = await api.get<Category[]>("/categories");
     setCategories(cats);
   }, []);
 
   const fetchProducts = useCallback(async () => {
-    const q = query(collection(db, "products"), orderBy("name", "asc"));
-    const snap = await getDocs(q);
-    const prods: Product[] = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
+    const prods = await api.get<Product[]>("/products");
     setProducts(prods);
   }, []);
 
@@ -246,16 +225,11 @@ export default function ProductsPage() {
   ) {
     setCatSaving(true);
     try {
+      const payload = { ...data, slug: generateSlug(data.name) };
       if (existingId) {
-        await updateDoc(doc(db, "categories", existingId), {
-          ...data,
-          slug: generateSlug(data.name),
-        });
+        await api.put(`/categories/${existingId}`, payload);
       } else {
-        await addDoc(collection(db, "categories"), {
-          ...data,
-          slug: generateSlug(data.name),
-        });
+        await api.post("/categories", payload);
       }
       await fetchCategories();
       setCatEditing(null);
@@ -269,7 +243,7 @@ export default function ProductsPage() {
   async function handleDeleteCategory(id: string) {
     if (!window.confirm("Delete this category? Products in this category will lose their category association.")) return;
     try {
-      await deleteDoc(doc(db, "categories", id));
+      await api.delete(`/categories/${id}`);
       await fetchCategories();
     } catch (err) {
       console.error("Failed to delete category:", err);
@@ -381,16 +355,12 @@ export default function ProductsPage() {
         featured: form.featured,
         active: form.active,
         seasonalOnly: form.seasonalOnly,
-        updatedAt: Timestamp.now(),
       };
 
       if (editingProduct) {
-        await updateDoc(doc(db, "products", editingProduct.id), payload);
+        await api.put(`/products/${editingProduct.id}`, payload);
       } else {
-        await addDoc(collection(db, "products"), {
-          ...payload,
-          createdAt: Timestamp.now(),
-        });
+        await api.post("/products", payload);
       }
 
       await fetchProducts();
@@ -405,7 +375,7 @@ export default function ProductsPage() {
   async function handleDeleteProduct() {
     if (!deleteTarget) return;
     try {
-      await deleteDoc(doc(db, "products", deleteTarget.id));
+      await api.delete(`/products/${deleteTarget.id}`);
       await fetchProducts();
       setDeleteTarget(null);
     } catch (err) {
@@ -413,13 +383,9 @@ export default function ProductsPage() {
     }
   }
 
-  // ─── Lookup helper ─────────────────────────────────────────
-
   function categoryName(id: string): string {
     return categories.find((c) => c.id === id)?.name ?? "Uncategorized";
   }
-
-  // ─── Render ────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -685,7 +651,6 @@ export default function ProductsPage() {
             className="w-full max-w-3xl rounded-lg bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal header */}
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-lg font-semibold text-gray-900">
                 {editingProduct ? "Edit Product" : "Add Product"}
@@ -695,304 +660,100 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            {/* Modal body */}
             <div className="max-h-[calc(100vh-12rem)] overflow-y-auto px-6 py-5 space-y-6">
-              {/* ── Basic Info ─────────────────────────────── */}
               <fieldset className="space-y-4">
                 <legend className="text-sm font-semibold text-gray-800 uppercase tracking-wider">Basic Info</legend>
-
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">Name *</label>
-                    <input
-                      type="text"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                      value={form.name}
-                      onChange={(e) => updateForm("name", e.target.value)}
-                      placeholder="Monstera Deliciosa"
-                    />
+                    <input type="text" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" value={form.name} onChange={(e) => updateForm("name", e.target.value)} placeholder="Monstera Deliciosa" />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
-                    <select
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                      value={form.categoryId}
-                      onChange={(e) => updateForm("categoryId", e.target.value)}
-                    >
+                    <select className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" value={form.categoryId} onChange={(e) => updateForm("categoryId", e.target.value)}>
                       <option value="">Select a category</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
+                      {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                     </select>
                   </div>
                 </div>
-
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
-                  <textarea
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                    rows={3}
-                    value={form.description}
-                    onChange={(e) => updateForm("description", e.target.value)}
-                    placeholder="A beautiful tropical plant..."
-                  />
+                  <textarea className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" rows={3} value={form.description} onChange={(e) => updateForm("description", e.target.value)} placeholder="A beautiful tropical plant..." />
                 </div>
-
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Thumbnail URL</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                    value={form.thumbnailURL}
-                    onChange={(e) => updateForm("thumbnailURL", e.target.value)}
-                    placeholder="https://example.com/thumb.jpg"
-                  />
+                  <input type="text" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" value={form.thumbnailURL} onChange={(e) => updateForm("thumbnailURL", e.target.value)} placeholder="https://example.com/thumb.jpg" />
                 </div>
-
                 <div className="flex flex-wrap gap-6">
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                      checked={form.active}
-                      onChange={(e) => updateForm("active", e.target.checked)}
-                    />
-                    Active
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                      checked={form.featured}
-                      onChange={(e) => updateForm("featured", e.target.checked)}
-                    />
-                    Featured
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                      checked={form.seasonalOnly}
-                      onChange={(e) => updateForm("seasonalOnly", e.target.checked)}
-                    />
-                    Seasonal Only
-                  </label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" checked={form.active} onChange={(e) => updateForm("active", e.target.checked)} /> Active</label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" checked={form.featured} onChange={(e) => updateForm("featured", e.target.checked)} /> Featured</label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" checked={form.seasonalOnly} onChange={(e) => updateForm("seasonalOnly", e.target.checked)} /> Seasonal Only</label>
                 </div>
               </fieldset>
 
-              {/* ── Images ─────────────────────────────────── */}
               <fieldset className="space-y-3">
                 <legend className="text-sm font-semibold text-gray-800 uppercase tracking-wider">Images</legend>
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                    placeholder="https://example.com/image.jpg"
-                    value={imageInput}
-                    onChange={(e) => setImageInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImage())}
-                  />
-                  <button
-                    type="button"
-                    onClick={addImage}
-                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Add
-                  </button>
+                  <input type="text" className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="https://example.com/image.jpg" value={imageInput} onChange={(e) => setImageInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImage())} />
+                  <button type="button" onClick={addImage} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Add</button>
                 </div>
                 {form.images.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {form.images.map((url, i) => (
                       <div key={i} className="group relative">
                         <img src={url} alt="" className="h-16 w-16 rounded-md object-cover border border-gray-200" />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(i)}
-                          className="absolute -right-1.5 -top-1.5 hidden rounded-full bg-red-500 p-0.5 text-white group-hover:block"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
+                        <button type="button" onClick={() => removeImage(i)} className="absolute -right-1.5 -top-1.5 hidden rounded-full bg-red-500 p-0.5 text-white group-hover:block"><X className="h-3 w-3" /></button>
                       </div>
                     ))}
                   </div>
                 )}
               </fieldset>
 
-              {/* ── Sizes ──────────────────────────────────── */}
               <fieldset className="space-y-3">
                 <div className="flex items-center justify-between">
                   <legend className="text-sm font-semibold text-gray-800 uppercase tracking-wider">Sizes</legend>
-                  <button
-                    type="button"
-                    onClick={addSize}
-                    className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-                  >
-                    <Plus className="h-3 w-3" /> Add Size
-                  </button>
+                  <button type="button" onClick={addSize} className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"><Plus className="h-3 w-3" /> Add Size</button>
                 </div>
-
                 <div className="space-y-3">
                   {form.sizes.map((size, idx) => (
-                    <div
-                      key={size.id}
-                      className="rounded-lg border border-gray-200 bg-gray-50 p-3"
-                    >
+                    <div key={size.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                       <div className="mb-2 flex items-center justify-between">
                         <span className="text-xs font-medium text-gray-500">Size {idx + 1}</span>
-                        {form.sizes.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeSize(idx)}
-                            className="rounded p-0.5 text-gray-400 hover:text-red-500"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        )}
+                        {form.sizes.length > 1 && (<button type="button" onClick={() => removeSize(idx)} className="rounded p-0.5 text-gray-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>)}
                       </div>
                       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        <div>
-                          <label className="mb-0.5 block text-xs text-gray-500">Label</label>
-                          <input
-                            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
-                            placeholder="Small"
-                            value={size.label}
-                            onChange={(e) => updateSize(idx, "label", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-0.5 block text-xs text-gray-500">Height</label>
-                          <input
-                            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
-                            placeholder='6"'
-                            value={size.height}
-                            onChange={(e) => updateSize(idx, "height", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-0.5 block text-xs text-gray-500">Price ($)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
-                            value={size.price || ""}
-                            onChange={(e) => updateSize(idx, "price", parseFloat(e.target.value) || 0)}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-0.5 block text-xs text-gray-500">Compare Price ($)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
-                            value={size.compareAtPrice ?? ""}
-                            onChange={(e) => updateSize(idx, "compareAtPrice", parseFloat(e.target.value) || 0)}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-0.5 block text-xs text-gray-500">Stock</label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
-                            value={size.stock || ""}
-                            onChange={(e) => updateSize(idx, "stock", parseInt(e.target.value, 10) || 0)}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-0.5 block text-xs text-gray-500">SKU</label>
-                          <input
-                            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
-                            placeholder="MON-SM-001"
-                            value={size.sku}
-                            onChange={(e) => updateSize(idx, "sku", e.target.value)}
-                          />
-                        </div>
+                        <div><label className="mb-0.5 block text-xs text-gray-500">Label</label><input className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" placeholder="Small" value={size.label} onChange={(e) => updateSize(idx, "label", e.target.value)} /></div>
+                        <div><label className="mb-0.5 block text-xs text-gray-500">Height</label><input className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" placeholder='6"' value={size.height} onChange={(e) => updateSize(idx, "height", e.target.value)} /></div>
+                        <div><label className="mb-0.5 block text-xs text-gray-500">Price ($)</label><input type="number" step="0.01" min="0" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" value={size.price || ""} onChange={(e) => updateSize(idx, "price", parseFloat(e.target.value) || 0)} /></div>
+                        <div><label className="mb-0.5 block text-xs text-gray-500">Compare Price ($)</label><input type="number" step="0.01" min="0" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" value={size.compareAtPrice ?? ""} onChange={(e) => updateSize(idx, "compareAtPrice", parseFloat(e.target.value) || 0)} /></div>
+                        <div><label className="mb-0.5 block text-xs text-gray-500">Stock</label><input type="number" min="0" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" value={size.stock || ""} onChange={(e) => updateSize(idx, "stock", parseInt(e.target.value, 10) || 0)} /></div>
+                        <div><label className="mb-0.5 block text-xs text-gray-500">SKU</label><input className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" placeholder="MON-SM-001" value={size.sku} onChange={(e) => updateSize(idx, "sku", e.target.value)} /></div>
                       </div>
                     </div>
                   ))}
                 </div>
               </fieldset>
 
-              {/* ── Care Info ──────────────────────────────── */}
               <fieldset className="space-y-4">
                 <legend className="text-sm font-semibold text-gray-800 uppercase tracking-wider">Care Info</legend>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Sunlight</label>
-                    <input
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                      placeholder="Bright indirect light"
-                      value={form.careInfo.sunlight}
-                      onChange={(e) => updateCareInfo("sunlight", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Water</label>
-                    <input
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                      placeholder="Every 1-2 weeks"
-                      value={form.careInfo.water}
-                      onChange={(e) => updateCareInfo("water", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Temperature</label>
-                    <input
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                      placeholder="65-85F"
-                      value={form.careInfo.temperature}
-                      onChange={(e) => updateCareInfo("temperature", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Soil</label>
-                    <input
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                      placeholder="Well-draining potting mix"
-                      value={form.careInfo.soil}
-                      onChange={(e) => updateCareInfo("soil", e.target.value)}
-                    />
-                  </div>
+                  <div><label className="mb-1 block text-sm font-medium text-gray-700">Sunlight</label><input className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="Bright indirect light" value={form.careInfo.sunlight} onChange={(e) => updateCareInfo("sunlight", e.target.value)} /></div>
+                  <div><label className="mb-1 block text-sm font-medium text-gray-700">Water</label><input className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="Every 1-2 weeks" value={form.careInfo.water} onChange={(e) => updateCareInfo("water", e.target.value)} /></div>
+                  <div><label className="mb-1 block text-sm font-medium text-gray-700">Temperature</label><input className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="65-85F" value={form.careInfo.temperature} onChange={(e) => updateCareInfo("temperature", e.target.value)} /></div>
+                  <div><label className="mb-1 block text-sm font-medium text-gray-700">Soil</label><input className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="Well-draining potting mix" value={form.careInfo.soil} onChange={(e) => updateCareInfo("soil", e.target.value)} /></div>
                 </div>
-
-                {/* Care tips */}
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Care Tips</label>
                   <div className="flex gap-2">
-                    <input
-                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                      placeholder="Add a care tip..."
-                      value={careTipInput}
-                      onChange={(e) => setCareTipInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCareTip())}
-                    />
-                    <button
-                      type="button"
-                      onClick={addCareTip}
-                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      Add
-                    </button>
+                    <input className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="Add a care tip..." value={careTipInput} onChange={(e) => setCareTipInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCareTip())} />
+                    <button type="button" onClick={addCareTip} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Add</button>
                   </div>
                   {form.careInfo.tips.length > 0 && (
                     <ul className="mt-2 space-y-1">
                       {form.careInfo.tips.map((tip, i) => (
-                        <li
-                          key={i}
-                          className="flex items-center justify-between rounded bg-gray-50 px-3 py-1.5 text-sm text-gray-700"
-                        >
+                        <li key={i} className="flex items-center justify-between rounded bg-gray-50 px-3 py-1.5 text-sm text-gray-700">
                           <span>{tip}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeCareTip(i)}
-                            className="ml-2 text-gray-400 hover:text-red-500"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
+                          <button type="button" onClick={() => removeCareTip(i)} className="ml-2 text-gray-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
                         </li>
                       ))}
                     </ul>
@@ -1000,34 +761,18 @@ export default function ProductsPage() {
                 </div>
               </fieldset>
 
-              {/* ── Tags ───────────────────────────────────── */}
               <fieldset className="space-y-2">
                 <legend className="text-sm font-semibold text-gray-800 uppercase tracking-wider">Tags</legend>
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4 text-gray-400" />
-                  <input
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                    placeholder="tropical, indoor, low-light (comma-separated)"
-                    value={form.tags}
-                    onChange={(e) => updateForm("tags", e.target.value)}
-                  />
+                  <input className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="tropical, indoor, low-light (comma-separated)" value={form.tags} onChange={(e) => updateForm("tags", e.target.value)} />
                 </div>
               </fieldset>
             </div>
 
-            {/* Modal footer */}
             <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-              <button
-                onClick={closeModal}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveProduct}
-                disabled={saving || !form.name.trim()}
-                className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
+              <button onClick={closeModal} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={handleSaveProduct} disabled={saving || !form.name.trim()} className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 {editingProduct ? "Update Product" : "Create Product"}
               </button>

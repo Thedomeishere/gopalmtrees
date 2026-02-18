@@ -1,0 +1,342 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ──────────────────────────────────────────────────────
+
+enum UserRole {
+  customer
+  admin
+}
+
+model User {
+  id                      String                  @id @default(cuid())
+  email                   String                  @unique
+  passwordHash            String
+  displayName             String                  @default("")
+  phone                   String                  @default("")
+  photoURL                String                  @default("")
+  role                    UserRole                @default(customer)
+  stripeCustomerId        String?
+  notificationPreferences NotificationPreferences?
+  addresses               Address[]
+  pushTokens              PushToken[]
+  orders                  Order[]
+  quotes                  Quote[]
+  wishlistItems           WishlistItem[]
+  cart                    Cart?
+  sentNotifications       PushNotification[]      @relation("SentBy")
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+}
+
+model NotificationPreferences {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderUpdates    Boolean @default(true)
+  promotions      Boolean @default(true)
+  quoteResponses  Boolean @default(true)
+}
+
+model Address {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String
+  street    String
+  unit      String?
+  city      String
+  state     String
+  zip       String
+  isDefault Boolean @default(false)
+
+  @@index([userId])
+}
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─── Product ───────────────────────────────────────────────────
+
+model Product {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  description  String        @default("")
+  categoryId   String?
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  thumbnailURL String        @default("")
+  featured     Boolean       @default(false)
+  active       Boolean       @default(true)
+  seasonalOnly Boolean       @default(false)
+  // CareInfo flattened (1:1)
+  careSunlight    String     @default("")
+  careWater       String     @default("")
+  careTemperature String     @default("")
+  careSoil        String     @default("")
+  images       ProductImage[]
+  sizes        ProductSize[]
+  tags         ProductTag[]
+  careTips     CareTip[]
+  wishlistItems WishlistItem[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([categoryId])
+  @@index([active, categoryId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+}
+
+model ProductSize {
+  id             String  @id @default(cuid())
+  productId      String
+  product        Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label          String
+  height         String  @default("")
+  price          Float
+  compareAtPrice Float?
+  stock          Int     @default(0)
+  sku            String  @default("")
+
+  @@index([productId])
+}
+
+model ProductTag {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag       String
+
+  @@index([productId])
+  @@index([tag])
+}
+
+model CareTip {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tip       String
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+}
+
+// ─── Category ──────────────────────────────────────────────────
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String    @default("")
+  imageURL    String    @default("")
+  parentId    String?
+  sortOrder   Int       @default(0)
+  active      Boolean   @default(true)
+  products    Product[]
+}
+
+// ─── Cart ──────────────────────────────────────────────────────
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id           String @id @default(cuid())
+  cartId       String
+  cart         Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId    String
+  productName  String
+  productImage String @default("")
+  sizeId       String
+  sizeLabel    String
+  price        Float
+  quantity     Int
+
+  @@index([cartId])
+}
+
+// ─── Wishlist ──────────────────────────────────────────────────
+
+model WishlistItem {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productName  String
+  productImage String   @default("")
+  addedAt      DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+// ─── Order ─────────────────────────────────────────────────────
+
+enum OrderStatus {
+  confirmed
+  preparing
+  in_transit
+  delivered
+  cancelled
+  refunded
+}
+
+model Order {
+  id                    String             @id @default(cuid())
+  userId                String
+  user                  User               @relation(fields: [userId], references: [id])
+  userEmail             String
+  items                 Json               // OrderItem[] stored as JSON
+  subtotal              Float
+  tax                   Float
+  deliveryFee           Float              @default(0)
+  total                 Float
+  shippingAddress       Json               // Address stored as JSON
+  deliveryDate          DateTime?
+  statusHistory         Json               // OrderStatusEntry[] stored as JSON
+  currentStatus         OrderStatus        @default(confirmed)
+  stripePaymentIntentId String             @default("")
+  refundId              String?
+  refundAmount          Float?
+  notes                 String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([currentStatus])
+  @@index([createdAt])
+}
+
+// ─── Pending Order (ephemeral, for Stripe webhook) ─────────────
+
+model PendingOrder {
+  id              String   @id // paymentIntentId
+  userId          String
+  userEmail       String
+  items           Json     // validated OrderItem[]
+  subtotal        Float
+  tax             Float
+  deliveryFee     Float    @default(0)
+  total           Float
+  shippingAddress Json     // Address
+  deliveryDate    String?
+  createdAt       DateTime @default(now())
+}
+
+// ─── Quote ─────────────────────────────────────────────────────
+
+enum QuoteStatus {
+  pending
+  reviewed
+  estimated
+  accepted
+  declined
+}
+
+enum ServiceType {
+  landscape_design
+  installation
+  maintenance
+  consultation
+  bulk_order
+}
+
+model Quote {
+  id                String      @id @default(cuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id])
+  userEmail         String
+  userName          String
+  serviceType       ServiceType
+  description       String
+  photos            String[]    // URL array
+  contactPreference String      @default("email")
+  phone             String?
+  status            QuoteStatus @default(pending)
+  adminResponse     String?
+  estimatedPrice    Float?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ─── Store ─────────────────────────────────────────────────────
+
+model StoreLocation {
+  id        String  @id @default(cuid())
+  name      String
+  address   String
+  city      String
+  state     String
+  zip       String
+  phone     String
+  latitude  Float
+  longitude Float
+  hours     Json    // StoreHours[]
+  imageURL  String  @default("")
+  active    Boolean @default(true)
+}
+
+// ─── Notification ──────────────────────────────────────────────
+
+enum NotificationType {
+  order_update
+  promotion
+  quote_response
+  general
+}
+
+model PushNotification {
+  id            String           @id @default(cuid())
+  title         String
+  body          String
+  type          NotificationType @default(general)
+  data          Json?
+  targetUserIds String[]
+  broadcast     Boolean          @default(false)
+  sentBy        String
+  sentByUser    User             @relation("SentBy", fields: [sentBy], references: [id])
+  sentAt        DateTime         @default(now())
+}
+
+// ─── Analytics ─────────────────────────────────────────────────
+
+model DailyAnalytics {
+  id                String @id // date string YYYY-MM-DD
+  date              String @unique
+  revenue           Float  @default(0)
+  orderCount        Int    @default(0)
+  newCustomers      Int    @default(0)
+  topProductsJson   Json   @default("[]") // { productId, productName, quantity }[]
+  averageOrderValue Float  @default(0)
+}

@@ -82,7 +82,7 @@ export default function OrdersScreen() {
             </Text>
             <View style={styles.orderFooter}>
               <Text style={styles.orderDate}>
-                {order.createdAt?.toDate?.()?.toLocaleDateString() || ""}
+                {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : ""}
               </Text>
               <Text style={styles.orderTotal}>{formatCurrency(order.total)}</Text>
             </View>

@@ -7,8 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { doc, getDoc } from "@react-native-firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
 import { formatCurrency, ORDER_STATUS_LABELS, type Order } from "@palmtree/shared";
 import { Ionicons } from "@expo/vector-icons";
@@ -42,10 +41,8 @@ export default function OrderDetailScreen() {
 
   const loadOrder = async () => {
     try {
-      const snap = await getDoc(doc(db, "orders", id));
-      if (snap.exists) {
-        setOrder({ id: snap.id, ...snap.data() } as Order);
-      }
+      const data = await api.get<Order>(`/orders/${id}`);
+      setOrder(data);
     } catch (error) {
       console.error("Error loading order:", error);
     } finally {
@@ -127,7 +124,7 @@ export default function OrderDetailScreen() {
                 <Text style={styles.timelineNote}>{entry.note}</Text>
               )}
               <Text style={styles.timelineDate}>
-                {entry.timestamp?.toDate?.()?.toLocaleString() || ""}
+                {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : ""}
               </Text>
             </View>
           </View>

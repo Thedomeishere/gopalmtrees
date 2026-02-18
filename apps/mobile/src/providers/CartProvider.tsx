@@ -1,6 +1,5 @@
 import React, { createContext, useEffect, useState, useCallback, useRef } from "react";
-import { doc, getDoc, setDoc, Timestamp } from "@react-native-firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { CartItem } from "@palmtree/shared";
 
@@ -32,7 +31,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Load cart from Firestore
+  // Load cart from API
   useEffect(() => {
     if (!user) {
       setItems([]);
@@ -41,11 +40,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     const loadCart = async () => {
       try {
-        const cartDoc = await getDoc(doc(db, "carts", user.uid));
-        if (cartDoc.exists) {
-          const data = cartDoc.data();
-          setItems(data?.items || []);
-        }
+        const data = await api.get<{ items: CartItem[] }>("/cart");
+        setItems(data.items || []);
       } catch (error) {
         console.error("Error loading cart:", error);
       } finally {
@@ -55,18 +51,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     loadCart();
   }, [user]);
 
-  // Debounced persist to Firestore
+  // Debounced persist to API
   const persistCart = useCallback(
     (newItems: CartItem[]) => {
       if (!user) return;
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
       debounceTimer.current = setTimeout(async () => {
         try {
-          await setDoc(doc(db, "carts", user.uid), {
-            userId: user.uid,
-            items: newItems,
-            updatedAt: Timestamp.now(),
-          });
+          await api.put("/cart", { items: newItems });
         } catch (error) {
           console.error("Error persisting cart:", error);
         }

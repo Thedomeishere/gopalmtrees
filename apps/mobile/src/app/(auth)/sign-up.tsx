@@ -9,16 +9,13 @@ import {
   Alert,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
-import {
-  createUserWithEmailAndPassword,
-  updateProfile,
-} from "@react-native-firebase/auth";
-import { auth } from "@/services/firebase";
+import { useAuth } from "@/hooks/useAuth";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const { signUp } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,16 +39,10 @@ export default function SignUpScreen() {
 
     setLoading(true);
     try {
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(user, { displayName: name });
+      await signUp(email, password, name);
       router.replace("/(tabs)");
     } catch (error: any) {
-      const message =
-        error.code === "auth/email-already-in-use"
-          ? "An account with this email already exists"
-          : error.code === "auth/weak-password"
-            ? "Password is too weak. Please use at least 6 characters."
-            : "Failed to create account. Please try again.";
+      const message = error?.message || "Failed to create account. Please try again.";
       Alert.alert("Sign Up Failed", message);
     } finally {
       setLoading(false);

@@ -10,8 +10,7 @@ import {
 } from "react-native";
 import { useRouter, Stack } from "expo-router";
 import { Image } from "expo-image";
-import { collection, getDocs, deleteDoc, doc } from "@react-native-firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
 import type { WishlistItem } from "@palmtree/shared";
@@ -31,10 +30,8 @@ export default function WishlistScreen() {
   const loadWishlist = async () => {
     if (!user) return;
     try {
-      const snap = await getDocs(collection(db, `users/${user.uid}/wishlist`));
-      setItems(
-        snap.docs.map((d) => ({ ...d.data() }) as WishlistItem)
-      );
+      const wishlist = await api.get<WishlistItem[]>("/wishlist");
+      setItems(wishlist);
     } catch (error) {
       console.error("Error loading wishlist:", error);
     } finally {
@@ -45,7 +42,7 @@ export default function WishlistScreen() {
   const removeItem = async (productId: string) => {
     if (!user) return;
     try {
-      await deleteDoc(doc(db, `users/${user.uid}/wishlist`, productId));
+      await api.delete(`/wishlist/${productId}`);
       setItems((prev) => prev.filter((i) => i.productId !== productId));
     } catch (error) {
       console.error("Error removing from wishlist:", error);
@@ -93,7 +90,7 @@ export default function WishlistScreen() {
                 {item.productName}
               </Text>
               <Text style={styles.addedDate}>
-                Added {item.addedAt?.toDate?.()?.toLocaleDateString() || ""}
+                Added {item.addedAt ? new Date(item.addedAt).toLocaleDateString() : ""}
               </Text>
             </View>
             <TouchableOpacity

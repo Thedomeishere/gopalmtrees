@@ -8,8 +8,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
-import { doc, getDoc } from "@react-native-firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
 import { SERVICE_TYPE_LABELS, formatCurrency, type Quote } from "@palmtree/shared";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,10 +32,8 @@ export default function QuoteDetailScreen() {
 
   const loadQuote = async () => {
     try {
-      const snap = await getDoc(doc(db, "quotes", id));
-      if (snap.exists) {
-        setQuote({ id: snap.id, ...snap.data() } as Quote);
-      }
+      const data = await api.get<Quote>(`/quotes/${id}`);
+      setQuote(data);
     } catch (error) {
       console.error("Error loading quote:", error);
     } finally {
@@ -148,12 +145,12 @@ export default function QuoteDetailScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Submitted</Text>
         <Text style={styles.date}>
-          {quote.createdAt?.toDate?.()?.toLocaleDateString("en-US", {
+          {new Date(quote.createdAt).toLocaleDateString("en-US", {
             weekday: "long",
             year: "numeric",
             month: "long",
             day: "numeric",
-          }) || ""}
+          })}
         </Text>
       </View>
     </ScrollView>

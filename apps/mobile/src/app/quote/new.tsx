@@ -11,10 +11,8 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
-import { collection, addDoc, Timestamp } from "@react-native-firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "@react-native-firebase/storage";
 import * as ImagePicker from "expo-image-picker";
-import { db, storage } from "@/services/firebase";
+import { api } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
 import { SERVICE_TYPE_LABELS, type ServiceType } from "@palmtree/shared";
@@ -66,30 +64,28 @@ export default function NewQuoteScreen() {
 
     setLoading(true);
     try {
-      // Upload photos
-      const photoURLs: string[] = [];
-      for (const uri of photos) {
-        const filename = `quotes/${user.uid}/${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        const storageRef = ref(storage, filename);
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        await uploadBytes(storageRef, blob);
-        const url = await getDownloadURL(storageRef);
-        photoURLs.push(url);
+      // Upload photos first if any
+      let photoURLs: string[] = [];
+      if (photos.length > 0) {
+        const formData = new FormData();
+        for (const uri of photos) {
+          const filename = uri.split("/").pop() || "photo.jpg";
+          formData.append("files", {
+            uri,
+            name: filename,
+            type: "image/jpeg",
+          } as any);
+        }
+        const uploadResult = await api.upload<{ urls: string[] }>("/upload", formData);
+        photoURLs = uploadResult.urls;
       }
 
-      await addDoc(collection(db, "quotes"), {
-        userId: user.uid,
-        userEmail: user.email || "",
-        userName: profile?.displayName || user.displayName || "",
+      await api.post("/quotes", {
         serviceType,
         description: description.trim(),
         photos: photoURLs,
         contactPreference,
         phone: phone.trim() || null,
-        status: "pending",
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
       });
 
       Alert.alert(

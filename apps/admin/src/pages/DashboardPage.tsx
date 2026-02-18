@@ -1,14 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import type { DailyAnalytics, Order, Product } from "@palmtree/shared";
 import { formatCurrency } from "@palmtree/shared";
 import {
@@ -46,37 +37,18 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - dateRange);
-      const startDateStr = startDate.toISOString().split("T")[0];
-
-      const [analyticsSnap, ordersSnap, productsSnap] = await Promise.all([
-        getDocs(
-          query(
-            collection(db, "analytics"),
-            where("date", ">=", startDateStr),
-            orderBy("date", "asc")
-          )
-        ),
-        getDocs(
-          query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(10))
-        ),
-        getDocs(query(collection(db, "products"), where("active", "==", true))),
+      const [analyticsData, ordersData, productsData] = await Promise.all([
+        api.get<DailyAnalytics[]>(`/analytics?days=${dateRange}`),
+        api.get<Order[]>("/orders"),
+        api.get<Product[]>("/products"),
       ]);
 
-      setAnalytics(
-        analyticsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as DailyAnalytics)
-      );
-      setRecentOrders(
-        ordersSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Order)
-      );
+      setAnalytics(analyticsData);
+      setRecentOrders(ordersData.slice(0, 10));
 
       // Find low stock products
-      const products = productsSnap.docs.map(
-        (d) => ({ id: d.id, ...d.data() }) as Product
-      );
       setLowStockProducts(
-        products.filter((p) => p.sizes?.some((s) => s.stock <= 5))
+        productsData.filter((p) => p.active && p.sizes?.some((s) => s.stock <= 5))
       );
     } catch (error) {
       console.error("Error loading dashboard data:", error);

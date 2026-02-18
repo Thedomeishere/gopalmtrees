@@ -8,8 +8,7 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { sendPasswordResetEmail } from "@react-native-firebase/auth";
-import { auth } from "@/services/firebase";
+import { api } from "@/services/api";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -26,13 +25,10 @@ export default function ForgotPasswordScreen() {
     }
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
+      await api.post("/auth/forgot-password", { email });
       setSent(true);
     } catch (error: any) {
-      const message =
-        error.code === "auth/user-not-found"
-          ? "No account found with this email"
-          : "Failed to send reset email. Please try again.";
+      const message = error?.message || "Failed to send reset email. Please try again.";
       Alert.alert("Error", message);
     } finally {
       setLoading(false);

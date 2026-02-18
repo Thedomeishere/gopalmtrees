@@ -1,16 +1,21 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  type User,
-} from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/services/firebase";
-import type { UserProfile } from "@palmtree/shared";
+import { api } from "@/services/api";
+
+interface UserProfile {
+  id: string;
+  email: string;
+  displayName: string;
+  phone?: string;
+  photoURL?: string;
+  role: string;
+  addresses: any[];
+  notificationPreferences: any;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
   profile: UserProfile | null;
   loading: boolean;
   isAdmin: boolean;
@@ -21,39 +26,44 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser) {
-        const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-        if (snap.exists()) {
-          setProfile({ id: snap.id, ...snap.data() } as UserProfile);
-        }
-      } else {
-        setProfile(null);
-      }
+    const token = localStorage.getItem("token");
+    if (token) {
+      api
+        .get<{ user: any; profile: UserProfile }>("/auth/me")
+        .then((data) => {
+          setUser(data.profile);
+        })
+        .catch(() => {
+          localStorage.removeItem("token");
+        })
+        .finally(() => setLoading(false));
+    } else {
       setLoading(false);
-    });
-    return unsubscribe;
+    }
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    const data = await api.post<{ token: string; user: any; profile: UserProfile }>("/auth/login", {
+      email,
+      password,
+    });
+    localStorage.setItem("token", data.token);
+    setUser(data.profile);
   };
 
   const signOut = async () => {
-    await firebaseSignOut(auth);
-    setProfile(null);
+    localStorage.removeItem("token");
+    setUser(null);
   };
 
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = user?.role === "admin";
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isAdmin, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, profile: user, loading, isAdmin, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

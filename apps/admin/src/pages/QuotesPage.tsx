@@ -1,14 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  collection,
-  getDocs,
-  updateDoc,
-  doc,
-  query,
-  orderBy,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import type { Quote, QuoteStatus } from "@palmtree/shared";
 import { SERVICE_TYPE_LABELS, formatCurrency } from "@palmtree/shared";
 import {
@@ -100,14 +91,8 @@ export default function QuotesPage() {
     setLoading(true);
     setError(null);
     try {
-      const q = query(
-        collection(db, "quotes"),
-        orderBy("createdAt", "desc")
-      );
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(
-        (d) => ({ id: d.id, ...d.data() } as Quote)
-      );
+      const data = await api.get<Quote[]>("/quotes");
+
       setQuotes(data);
 
       // Pre-populate response fields with existing admin responses
@@ -143,7 +128,6 @@ export default function QuotesPage() {
     try {
       const updateData: Record<string, unknown> = {
         status: newStatus,
-        updatedAt: Timestamp.now(),
       };
 
       if (includeResponse) {
@@ -161,7 +145,7 @@ export default function QuotesPage() {
         }
       }
 
-      await updateDoc(doc(db, "quotes", quoteId), updateData);
+      await api.put(`/quotes/${quoteId}`, updateData);
 
       // Update local state
       setQuotes((prev) =>
@@ -170,7 +154,7 @@ export default function QuotesPage() {
             ? {
                 ...q,
                 ...updateData,
-                updatedAt: updateData.updatedAt as Timestamp,
+                updatedAt: new Date().toISOString(),
                 status: newStatus,
                 adminResponse:
                   (updateData.adminResponse as string) ?? q.adminResponse,
@@ -204,9 +188,9 @@ export default function QuotesPage() {
 
   // ─── Helpers ────────────────────────────────────────────────
 
-  const formatDate = (timestamp: Timestamp) => {
+  const formatDate = (timestamp: string) => {
     try {
-      return format(timestamp.toDate(), "MMM d, yyyy h:mm a");
+      return format(new Date(timestamp), "MMM d, yyyy h:mm a");
     } catch {
       return "—";
     }
@@ -455,7 +439,7 @@ interface QuoteRowProps {
   onEstimatedPriceChange: (val: string) => void;
   onStatusUpdate: (status: QuoteStatus, includeResponse?: boolean) => void;
   onOpenLightbox: (url: string) => void;
-  formatDate: (t: Timestamp) => string;
+  formatDate: (t: string) => string;
   shortId: (id: string) => string;
 }
 

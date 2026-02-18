@@ -4,6 +4,19 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    allowedHosts: ["palm.g3h.cloud", "gopalm.g3h.cloud"],
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/uploads": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

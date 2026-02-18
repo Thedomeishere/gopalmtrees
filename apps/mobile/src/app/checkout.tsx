@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { httpsCallable, getFunctions } from "@react-native-firebase/functions";
+import { api } from "@/services/api";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
@@ -44,10 +44,12 @@ export default function CheckoutScreen() {
 
     setLoading(true);
     try {
-      const functions = getFunctions();
-      const createPaymentIntent = httpsCallable(functions, "createPaymentIntent");
-
-      const result = await createPaymentIntent({
+      const { clientSecret, amount, tax, deliveryFee } = await api.post<{
+        clientSecret: string;
+        amount: number;
+        tax: number;
+        deliveryFee: number;
+      }>("/stripe/create-payment-intent", {
         items: items.map((item) => ({
           productId: item.productId,
           sizeId: item.sizeId,
@@ -56,13 +58,6 @@ export default function CheckoutScreen() {
         shippingAddress: selectedAddress,
         deliveryDate: selectedDeliveryDay,
       });
-
-      const { clientSecret, amount, tax, deliveryFee } = result.data as {
-        clientSecret: string;
-        amount: number;
-        tax: number;
-        deliveryFee: number;
-      };
 
       // In a real app, present the Stripe Payment Sheet here:
       // const { error } = await presentPaymentSheet();

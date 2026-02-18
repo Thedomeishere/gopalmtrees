@@ -9,8 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { Stack } from "expo-router";
-import { doc, updateDoc, arrayUnion, arrayRemove } from "@react-native-firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
 import { generateId, type Address } from "@palmtree/shared";
@@ -54,9 +53,7 @@ export default function AddressesScreen() {
       isDefault: addresses.length === 0,
     };
     try {
-      await updateDoc(doc(db, "users", user.uid), {
-        addresses: arrayUnion(newAddress),
-      });
+      await api.post("/users/me/addresses", newAddress);
       await refreshProfile();
       resetForm();
     } catch (error) {
@@ -74,9 +71,7 @@ export default function AddressesScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await updateDoc(doc(db, "users", user.uid), {
-              addresses: arrayRemove(address),
-            });
+            await api.delete(`/users/me/addresses/${address.id}`);
             await refreshProfile();
           } catch (error) {
             console.error("Error deleting address:", error);
@@ -88,12 +83,8 @@ export default function AddressesScreen() {
 
   const setDefault = async (address: Address) => {
     if (!user) return;
-    const updated = addresses.map((a) => ({
-      ...a,
-      isDefault: a.id === address.id,
-    }));
     try {
-      await updateDoc(doc(db, "users", user.uid), { addresses: updated });
+      await api.put(`/users/me/addresses/${address.id}`, { isDefault: true });
       await refreshProfile();
     } catch (error) {
       console.error("Error setting default:", error);

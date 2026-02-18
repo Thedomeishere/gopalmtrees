@@ -1,16 +1,20 @@
 import React, { createContext, useEffect, useState, useCallback } from "react";
-import { onAuthStateChanged, signOut as firebaseSignOut } from "@react-native-firebase/auth";
-import { type FirebaseAuthTypes } from "@react-native-firebase/auth";
-import { doc, getDoc } from "@react-native-firebase/firestore";
-import { auth, db } from "@/services/firebase";
+import { api, getToken, setToken, removeToken } from "@/services/api";
 import type { UserProfile } from "@palmtree/shared";
 
-type User = FirebaseAuthTypes.User;
+interface AuthUser {
+  id: string;
+  email: string;
+  displayName?: string;
+  role: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   profile: UserProfile | null;
   loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -19,53 +23,77 @@ export const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
+  signIn: async () => {},
+  signUp: async () => {},
   signOut: async () => {},
   refreshProfile: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (uid: string) => {
+  const fetchMe = useCallback(async () => {
     try {
-      const docRef = doc(db, "users", uid);
-      const snap = await getDoc(docRef);
-      if (snap.exists) {
-        setProfile({ id: snap.id, ...snap.data() } as UserProfile);
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
+      const data = await api.get<{ user: AuthUser; profile: UserProfile }>("/auth/me");
+      setUser(data.user);
+      setProfile(data.profile);
+    } catch {
+      setUser(null);
+      setProfile(null);
+      await removeToken();
     }
   }, []);
 
   const refreshProfile = useCallback(async () => {
     if (user) {
-      await fetchProfile(user.uid);
+      await fetchMe();
     }
-  }, [user, fetchProfile]);
+  }, [user, fetchMe]);
 
+  // Check for existing token on mount
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser) {
-        await fetchProfile(firebaseUser.uid);
-      } else {
-        setProfile(null);
+    const init = async () => {
+      const token = await getToken();
+      if (token) {
+        await fetchMe();
       }
       setLoading(false);
-    });
-    return unsubscribe;
-  }, [fetchProfile]);
+    };
+    init();
+  }, [fetchMe]);
+
+  const signIn = async (email: string, password: string) => {
+    const data = await api.post<{ token: string; user: AuthUser; profile: UserProfile }>(
+      "/auth/login",
+      { email, password }
+    );
+    await setToken(data.token);
+    setUser(data.user);
+    setProfile(data.profile);
+  };
+
+  const signUp = async (email: string, password: string, name: string) => {
+    const data = await api.post<{ token: string; user: AuthUser; profile: UserProfile }>(
+      "/auth/register",
+      { email, password, displayName: name }
+    );
+    await setToken(data.token);
+    setUser(data.user);
+    setProfile(data.profile);
+  };
 
   const signOut = async () => {
-    await firebaseSignOut(auth);
+    await removeToken();
+    setUser(null);
     setProfile(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider
+      value={{ user, profile, loading, signIn, signUp, signOut, refreshProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

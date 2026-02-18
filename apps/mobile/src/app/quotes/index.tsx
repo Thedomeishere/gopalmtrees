@@ -8,8 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter, Stack } from "expo-router";
-import { collection, getDocs, query, where, orderBy } from "@react-native-firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
 import { SERVICE_TYPE_LABELS, type Quote } from "@palmtree/shared";
@@ -37,13 +36,8 @@ export default function QuotesScreen() {
   const loadQuotes = async () => {
     if (!user) return;
     try {
-      const q = query(
-        collection(db, "quotes"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
-      );
-      const snap = await getDocs(q);
-      setQuotes(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Quote));
+      const data = await api.get<Quote[]>("/quotes");
+      setQuotes(data);
     } catch (error) {
       console.error("Error loading quotes:", error);
     } finally {
@@ -108,7 +102,7 @@ export default function QuotesScreen() {
                 {quote.description}
               </Text>
               <Text style={styles.quoteDate}>
-                {quote.createdAt?.toDate?.()?.toLocaleDateString() || ""}
+                {quote.createdAt ? new Date(quote.createdAt).toLocaleDateString() : ""}
               </Text>
             </TouchableOpacity>
           );

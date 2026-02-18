@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-} from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import type { PushNotification, UserProfile } from "@palmtree/shared";
 import { Bell, Send, Users, User, Radio, Clock, CheckCircle, AlertCircle } from "lucide-react";
 
@@ -33,12 +26,12 @@ export default function NotificationsPage() {
 
   const loadData = async () => {
     try {
-      const [notifSnap, userSnap] = await Promise.all([
-        getDocs(query(collection(db, "notifications"), orderBy("sentAt", "desc"))),
-        getDocs(query(collection(db, "users"), orderBy("createdAt", "desc"))),
+      const [notifs, users] = await Promise.all([
+        api.get<PushNotification[]>("/notifications"),
+        api.get<UserProfile[]>("/users"),
       ]);
-      setNotifications(notifSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as PushNotification));
-      setCustomers(userSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as UserProfile));
+      setNotifications(notifs);
+      setCustomers(users);
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -51,16 +44,13 @@ export default function NotificationsPage() {
     setSending(true);
     setSuccess("");
     try {
-      const functions = getFunctions();
-      const sendNotification = httpsCallable(functions, "sendPushNotification");
-      const result = await sendNotification({
+      const data = await api.post<{ sent: number; failed: number }>("/notifications/send", {
         title,
         body,
         type,
         broadcast: targetMode === "broadcast",
         targetUserIds: targetMode === "individual" ? selectedUsers : undefined,
       });
-      const data = result.data as { sent: number; failed: number };
       setSuccess(`Sent to ${data.sent} devices${data.failed ? `, ${data.failed} failed` : ""}`);
       setTitle("");
       setBody("");
@@ -255,7 +245,7 @@ export default function NotificationsPage() {
                   </div>
                   <div className="text-xs text-gray-400 flex items-center gap-1 whitespace-nowrap ml-4">
                     <Clock className="h-3 w-3" />
-                    {notif.sentAt?.toDate?.()?.toLocaleString() || "—"}
+                    {notif.sentAt ? new Date(notif.sentAt).toLocaleString() : "—"}
                   </div>
                 </div>
               </div>

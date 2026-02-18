@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  getDocs,
-  updateDoc,
-  doc,
-  query,
-  orderBy,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import type { Order, OrderStatus, OrderItem } from "@palmtree/shared";
 import { ORDER_STATUS_LABELS, formatCurrency } from "@palmtree/shared";
 import {
@@ -190,8 +181,8 @@ function OrderDetails({ order }: { order: Order }) {
                     >
                       <StatusBadge status={entry.status} />
                       <span className="text-gray-400">
-                        {entry.timestamp?.toDate
-                          ? entry.timestamp.toDate().toLocaleString()
+                        {entry.timestamp
+                          ? new Date(entry.timestamp).toLocaleString()
                           : ""}
                       </span>
                     </div>
@@ -302,11 +293,7 @@ export default function OrdersPage() {
     setLoading(true);
     setError(null);
     try {
-      const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const fetched: Order[] = snapshot.docs.map(
-        (d) => ({ id: d.id, ...d.data() }) as Order
-      );
+      const fetched = await api.get<Order[]>("/orders");
       setOrders(fetched);
     } catch (err) {
       console.error("Failed to fetch orders:", err);
@@ -398,18 +385,13 @@ export default function OrdersPage() {
     setMutating(true);
     try {
       const { orderId, newStatus } = statusUpdateTarget;
-      const orderRef = doc(db, "orders", orderId);
-      const target = orders.find((o) => o.id === orderId);
+      const note = `Status changed to ${ORDER_STATUS_LABELS[newStatus]}`;
+      await api.put(`/orders/${orderId}/status`, { status: newStatus, note });
       const newEntry = {
         status: newStatus,
-        timestamp: Timestamp.now(),
-        note: `Status changed to ${ORDER_STATUS_LABELS[newStatus]}`,
+        timestamp: new Date().toISOString(),
+        note,
       };
-      await updateDoc(orderRef, {
-        currentStatus: newStatus,
-        statusHistory: [...(target?.statusHistory ?? []), newEntry],
-        updatedAt: Timestamp.now(),
-      });
       setOrders((prev) =>
         prev.map((o) =>
           o.id === orderId
@@ -417,7 +399,7 @@ export default function OrdersPage() {
                 ...o,
                 currentStatus: newStatus,
                 statusHistory: [...o.statusHistory, newEntry],
-                updatedAt: Timestamp.now(),
+                updatedAt: new Date().toISOString(),
               }
             : o
         )
@@ -441,18 +423,12 @@ export default function OrdersPage() {
     }
     setMutating(true);
     try {
-      const orderRef = doc(db, "orders", refundTarget.id);
+      await api.post(`/orders/${refundTarget.id}/refund`, { amount });
       const newEntry = {
         status: "refunded" as OrderStatus,
-        timestamp: Timestamp.now(),
+        timestamp: new Date().toISOString(),
         note: `Refund of ${formatCurrency(amount)} issued`,
       };
-      await updateDoc(orderRef, {
-        currentStatus: "refunded",
-        refundAmount: amount,
-        statusHistory: [...refundTarget.statusHistory, newEntry],
-        updatedAt: Timestamp.now(),
-      });
       setOrders((prev) =>
         prev.map((o) =>
           o.id === refundTarget.id
@@ -461,7 +437,7 @@ export default function OrdersPage() {
                 currentStatus: "refunded" as OrderStatus,
                 refundAmount: amount,
                 statusHistory: [...o.statusHistory, newEntry],
-                updatedAt: Timestamp.now(),
+                updatedAt: new Date().toISOString(),
               }
             : o
         )
@@ -482,34 +458,25 @@ export default function OrdersPage() {
     if (!bulkAction || selectedIds.size === 0) return;
     setMutating(true);
     try {
-      const promises = Array.from(selectedIds).map(async (orderId) => {
-        const target = orders.find((o) => o.id === orderId);
-        const newEntry = {
-          status: bulkAction,
-          timestamp: Timestamp.now(),
-          note: `Bulk status change to ${ORDER_STATUS_LABELS[bulkAction]}`,
-        };
-        const orderRef = doc(db, "orders", orderId);
-        return updateDoc(orderRef, {
-          currentStatus: bulkAction,
-          statusHistory: [...(target?.statusHistory ?? []), newEntry],
-          updatedAt: Timestamp.now(),
-        });
+      const note = `Bulk status change to ${ORDER_STATUS_LABELS[bulkAction]}`;
+      await api.put("/orders/bulk-status", {
+        orderIds: Array.from(selectedIds),
+        status: bulkAction,
+        note,
       });
-      await Promise.all(promises);
       setOrders((prev) =>
         prev.map((o) => {
           if (!selectedIds.has(o.id)) return o;
           const newEntry = {
             status: bulkAction,
-            timestamp: Timestamp.now(),
-            note: `Bulk status change to ${ORDER_STATUS_LABELS[bulkAction]}`,
+            timestamp: new Date().toISOString(),
+            note,
           };
           return {
             ...o,
             currentStatus: bulkAction,
             statusHistory: [...o.statusHistory, newEntry],
-            updatedAt: Timestamp.now(),
+            updatedAt: new Date().toISOString(),
           };
         })
       );
@@ -528,9 +495,9 @@ export default function OrdersPage() {
 
   const shortId = (id: string) => id.slice(-6).toUpperCase();
 
-  const formatDate = (ts: Timestamp | undefined) => {
-    if (!ts || !ts.toDate) return "--";
-    return ts.toDate().toLocaleDateString("en-US", {
+  const formatDate = (ts: string | undefined) => {
+    if (!ts) return "--";
+    return new Date(ts).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -858,7 +825,7 @@ function OrderRow({
   onStatusChange: (status: OrderStatus) => void;
   onRefund: () => void;
   shortId: (id: string) => string;
-  formatDate: (ts: Timestamp | undefined) => string;
+  formatDate: (ts: string | undefined) => string;
   itemCount: (order: Order) => number;
 }) {
   return (

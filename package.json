@@ -5,14 +5,15 @@
   "scripts": {
     "dev:mobile": "turbo run dev --filter=@palmtree/mobile",
     "dev:admin": "turbo run dev --filter=@palmtree/admin",
+    "dev:api": "turbo run dev --filter=@palmtree/api",
     "build": "turbo run build",
     "build:admin": "turbo run build --filter=@palmtree/admin",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
-    "emulators": "firebase emulators:start",
-    "emulators:seed": "firebase emulators:start --import=./seed --export-on-exit=./seed",
-    "seed": "pnpm --dir scripts run seed"
+    "db:migrate": "pnpm --dir apps/api run db:migrate",
+    "db:seed": "pnpm --dir apps/api run db:seed",
+    "db:studio": "pnpm --dir apps/api run db:studio"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy,
-} from "@react-native-firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import { useAuth } from "./useAuth";
 import type { Order } from "@palmtree/shared";
 
@@ -27,13 +20,8 @@ export function useOrders() {
     if (!user) return;
     setLoading(true);
     try {
-      const q = query(
-        collection(db, "orders"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
-      );
-      const snap = await getDocs(q);
-      setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Order));
+      const data = await api.get<Order[]>("/orders");
+      setOrders(data);
     } catch (error) {
       console.error("Error loading orders:", error);
     } finally {

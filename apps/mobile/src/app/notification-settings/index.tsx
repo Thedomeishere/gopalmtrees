@@ -7,8 +7,7 @@ import {
   Alert,
 } from "react-native";
 import { Stack } from "expo-router";
-import { doc, updateDoc } from "@react-native-firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,9 +23,7 @@ export default function NotificationSettingsScreen() {
   const updatePref = async (key: string, value: boolean) => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, "users", user.uid), {
-        [`notificationPreferences.${key}`]: value,
-      });
+      await api.put("/users/me/notification-preferences", { [key]: value });
       await refreshProfile();
     } catch (error) {
       console.error("Error updating preference:", error);

@@ -11,12 +11,11 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
-import { doc, getDoc, setDoc, deleteDoc, Timestamp } from "@react-native-firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
-import { formatCurrency, type Product, type ProductSize } from "@palmtree/shared";
+import { formatCurrency, type Product, type ProductSize, type WishlistItem } from "@palmtree/shared";
 import { Ionicons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
@@ -40,12 +39,9 @@ export default function ProductDetailScreen() {
 
   const loadProduct = async () => {
     try {
-      const snap = await getDoc(doc(db, "products", id));
-      if (snap.exists) {
-        const p = { id: snap.id, ...snap.data() } as Product;
-        setProduct(p);
-        if (p.sizes.length > 0) setSelectedSize(p.sizes[0]);
-      }
+      const p = await api.get<Product>(`/products/${id}`);
+      setProduct(p);
+      if (p.sizes.length > 0) setSelectedSize(p.sizes[0]);
     } catch (error) {
       console.error("Error loading product:", error);
     } finally {
@@ -56,8 +52,8 @@ export default function ProductDetailScreen() {
   const checkWishlist = async () => {
     if (!user) return;
     try {
-      const snap = await getDoc(doc(db, `users/${user.uid}/wishlist`, id));
-      setIsWishlisted(snap.exists);
+      const wishlist = await api.get<WishlistItem[]>("/wishlist");
+      setIsWishlisted(wishlist.some((item) => item.productId === id));
     } catch {}
   };
 
@@ -67,16 +63,14 @@ export default function ProductDetailScreen() {
       return;
     }
     try {
-      const ref = doc(db, `users/${user.uid}/wishlist`, id);
       if (isWishlisted) {
-        await deleteDoc(ref);
+        await api.delete(`/wishlist/${id}`);
         setIsWishlisted(false);
       } else {
-        await setDoc(ref, {
+        await api.post("/wishlist", {
           productId: id,
           productName: product?.name || "",
           productImage: product?.thumbnailURL || product?.images?.[0] || "",
-          addedAt: Timestamp.now(),
         });
         setIsWishlisted(true);
       }

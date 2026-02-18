@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy,
-} from "@react-native-firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import type { Product, Category } from "@palmtree/shared";
 
 export function useProducts(categoryId?: string) {
@@ -20,23 +13,9 @@ export function useProducts(categoryId?: string) {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      let q;
-      if (categoryId) {
-        q = query(
-          collection(db, "products"),
-          where("active", "==", true),
-          where("categoryId", "==", categoryId),
-          orderBy("createdAt", "desc")
-        );
-      } else {
-        q = query(
-          collection(db, "products"),
-          where("active", "==", true),
-          orderBy("createdAt", "desc")
-        );
-      }
-      const snap = await getDocs(q);
-      setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product));
+      const params = categoryId ? `?categoryId=${categoryId}` : "";
+      const data = await api.get<Product[]>(`/products${params}`);
+      setProducts(data.filter((p) => p.active));
     } catch (error) {
       console.error("Error loading products:", error);
     } finally {
@@ -57,13 +36,8 @@ export function useFeaturedProducts() {
 
   const loadFeatured = async () => {
     try {
-      const q = query(
-        collection(db, "products"),
-        where("active", "==", true),
-        where("featured", "==", true)
-      );
-      const snap = await getDocs(q);
-      setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product));
+      const data = await api.get<Product[]>("/products?featured=true");
+      setProducts(data.filter((p) => p.active));
     } catch (error) {
       console.error("Error loading featured products:", error);
     } finally {
@@ -84,13 +58,8 @@ export function useCategories() {
 
   const loadCategories = async () => {
     try {
-      const q = query(
-        collection(db, "categories"),
-        where("active", "==", true),
-        orderBy("sortOrder", "asc")
-      );
-      const snap = await getDocs(q);
-      setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Category));
+      const data = await api.get<Category[]>("/categories");
+      setCategories(data.filter((c) => c.active));
     } catch (error) {
       console.error("Error loading categories:", error);
     } finally {

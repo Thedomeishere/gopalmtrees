@@ -1,14 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-  query,
-  orderBy,
-} from "firebase/firestore";
-import { db } from "@/services/firebase";
+import { api } from "@/services/api";
 import type { UserProfile } from "@palmtree/shared";
 import { Search, Users, Mail, Phone, MapPin, Shield, ShieldOff, Trash2, ChevronDown, ChevronUp, X } from "lucide-react";
 
@@ -25,9 +16,8 @@ export default function CustomersPage() {
 
   const loadCustomers = async () => {
     try {
-      const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
-      setCustomers(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as UserProfile));
+      const data = await api.get<UserProfile[]>("/users");
+      setCustomers(data);
     } catch (error) {
       console.error("Error loading customers:", error);
     } finally {
@@ -39,7 +29,7 @@ export default function CustomersPage() {
     const newRole = customer.role === "admin" ? "customer" : "admin";
     if (!confirm(`Change ${customer.displayName || customer.email} to ${newRole}?`)) return;
     try {
-      await updateDoc(doc(db, "users", customer.id), { role: newRole });
+      await api.put(`/users/${customer.id}/role`, { role: newRole });
       setCustomers((prev) =>
         prev.map((c) => (c.id === customer.id ? { ...c, role: newRole } : c))
       );
@@ -51,7 +41,7 @@ export default function CustomersPage() {
   const deleteCustomer = async (id: string) => {
     if (!confirm("Are you sure you want to delete this customer? This cannot be undone.")) return;
     try {
-      await deleteDoc(doc(db, "users", id));
+      await api.delete(`/users/${id}`);
       setCustomers((prev) => prev.filter((c) => c.id !== id));
     } catch (error) {
       console.error("Error deleting customer:", error);
@@ -190,7 +180,7 @@ function CustomerRow({
           </span>
         </td>
         <td className="px-4 py-3 text-sm text-gray-600">
-          {customer.createdAt?.toDate?.()?.toLocaleDateString() || "—"}
+          {customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : "—"}
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -247,7 +237,7 @@ function CustomerRow({
                 </div>
                 <h4 className="text-sm font-semibold text-gray-700 mt-4 mb-2">Account Details</h4>
                 <div className="space-y-1 text-sm text-gray-600">
-                  <p>FCM Tokens: {customer.fcmTokens?.length || 0}</p>
+                  <p>Push Tokens: {customer.pushTokens?.length || 0}</p>
                   <p>Stripe ID: {customer.stripeCustomerId || "None"}</p>
                 </div>
               </div>

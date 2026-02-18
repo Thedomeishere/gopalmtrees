@@ -7,20 +7,15 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  Platform,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
-import {
-  signInWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithCredential,
-} from "@react-native-firebase/auth";
-import { auth } from "@/services/firebase";
+import { useAuth } from "@/hooks/useAuth";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function SignInScreen() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,15 +28,10 @@ export default function SignInScreen() {
     }
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signIn(email, password);
       router.replace("/(tabs)");
     } catch (error: any) {
-      const message =
-        error.code === "auth/invalid-credential"
-          ? "Invalid email or password"
-          : error.code === "auth/too-many-requests"
-            ? "Too many attempts. Please try again later."
-            : "Failed to sign in. Please try again.";
+      const message = error?.message || "Failed to sign in. Please try again.";
       Alert.alert("Sign In Failed", message);
     } finally {
       setLoading(false);
@@ -116,7 +106,8 @@ export default function SignInScreen() {
           </Text>
         </TouchableOpacity>
 
-        <View style={styles.divider}>
+        {/* Social sign-in buttons hidden - OAuth not available without Firebase Auth */}
+        {/* <View style={styles.divider}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>or</Text>
           <View style={styles.dividerLine} />
@@ -132,7 +123,7 @@ export default function SignInScreen() {
         <TouchableOpacity style={styles.socialButton}>
           <Ionicons name="logo-google" size={20} color="#4285F4" />
           <Text style={styles.socialButtonText}>Continue with Google</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       <View style={styles.footer}>
