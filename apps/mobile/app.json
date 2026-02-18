@@ -44,7 +44,13 @@
       "expo-apple-authentication",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "@stripe/stripe-react-native",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.gopalmtrees.app",
+          "enableGooglePay": true
+        }
+      ],
       [
         "expo-notifications",
         {
