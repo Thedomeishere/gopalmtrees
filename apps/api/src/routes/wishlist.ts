@@ -52,7 +52,7 @@ router.delete("/:productId", requireAuth, async (req: Request, res: Response) =>
     await prisma.wishlistItem.deleteMany({
       where: {
         userId: req.user!.sub,
-        productId: req.params.productId,
+        productId: req.params.productId as string,
       },
     });
     res.json({ success: true });

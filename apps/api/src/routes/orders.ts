@@ -23,7 +23,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
 // GET /api/orders/:id
 router.get("/:id", requireAuth, async (req: Request, res: Response) => {
   try {
-    const order = await prisma.order.findUnique({ where: { id: req.params.id } });
+    const order = await prisma.order.findUnique({ where: { id: req.params.id as string } });
     if (!order) {
       res.status(404).json({ error: "Order not found" });
       return;
@@ -43,7 +43,7 @@ router.get("/:id", requireAuth, async (req: Request, res: Response) => {
 router.put("/:id/status", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { status, note } = req.body;
-    const order = await prisma.order.findUnique({ where: { id: req.params.id } });
+    const order = await prisma.order.findUnique({ where: { id: req.params.id as string } });
     if (!order) {
       res.status(404).json({ error: "Order not found" });
       return;
@@ -57,7 +57,7 @@ router.put("/:id/status", requireAuth, requireAdmin, async (req: Request, res: R
     });
 
     const updated = await prisma.order.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: {
         currentStatus: status,
         statusHistory,
@@ -65,7 +65,7 @@ router.put("/:id/status", requireAuth, requireAdmin, async (req: Request, res: R
     });
 
     // Send push notification (fire-and-forget)
-    sendOrderStatusNotification(order.userId, req.params.id, status).catch(console.error);
+    sendOrderStatusNotification(order.userId, req.params.id as string, status).catch(console.error);
 
     res.json(updated);
   } catch (error) {
@@ -78,7 +78,7 @@ router.put("/:id/status", requireAuth, requireAdmin, async (req: Request, res: R
 router.post("/:id/refund", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { amount } = req.body;
-    const order = await prisma.order.findUnique({ where: { id: req.params.id } });
+    const order = await prisma.order.findUnique({ where: { id: req.params.id as string } });
     if (!order) {
       res.status(404).json({ error: "Order not found" });
       return;
@@ -97,7 +97,7 @@ router.post("/:id/refund", requireAuth, requireAdmin, async (req: Request, res: 
     });
 
     const updated = await prisma.order.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: {
         currentStatus: "refunded",
         refundAmount: amount,

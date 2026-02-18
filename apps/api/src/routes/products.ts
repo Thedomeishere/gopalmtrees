@@ -63,7 +63,7 @@ router.get("/", async (_req: Request, res: Response) => {
 router.get("/:id", async (req: Request, res: Response) => {
   try {
     const product = await prisma.product.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       include: productIncludes,
     });
     if (!product) {
@@ -133,14 +133,14 @@ router.put("/:id", requireAuth, requireAdmin, async (req: Request, res: Response
 
     // Delete existing related records and recreate
     await prisma.$transaction([
-      prisma.productImage.deleteMany({ where: { productId: req.params.id } }),
-      prisma.productSize.deleteMany({ where: { productId: req.params.id } }),
-      prisma.productTag.deleteMany({ where: { productId: req.params.id } }),
-      prisma.careTip.deleteMany({ where: { productId: req.params.id } }),
+      prisma.productImage.deleteMany({ where: { productId: req.params.id as string } }),
+      prisma.productSize.deleteMany({ where: { productId: req.params.id as string } }),
+      prisma.productTag.deleteMany({ where: { productId: req.params.id as string } }),
+      prisma.careTip.deleteMany({ where: { productId: req.params.id as string } }),
     ]);
 
     const product = await prisma.product.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: {
         name,
         slug,
@@ -188,7 +188,7 @@ router.put("/:id", requireAuth, requireAdmin, async (req: Request, res: Response
 // DELETE /api/products/:id
 router.delete("/:id", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
-    await prisma.product.delete({ where: { id: req.params.id } });
+    await prisma.product.delete({ where: { id: req.params.id as string } });
     res.json({ success: true });
   } catch (error) {
     console.error("Delete product error:", error);

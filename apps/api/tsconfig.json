@@ -6,8 +6,6 @@
     "moduleResolution": "bundler",
     "outDir": "dist",
     "rootDir": "src",
-    "declaration": true,
-    "declarationMap": true,
     "sourceMap": true,
     "strict": true,
     "esModuleInterop": true,
@@ -16,6 +14,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*", "prisma/seed.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "prisma"]
 }

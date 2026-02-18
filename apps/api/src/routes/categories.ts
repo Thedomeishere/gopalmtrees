@@ -43,7 +43,7 @@ router.put("/:id", requireAuth, requireAdmin, async (req: Request, res: Response
   try {
     const { name, slug, description, imageURL, sortOrder, active } = req.body;
     const category = await prisma.category.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { name, slug, description, imageURL, sortOrder, active },
     });
     res.json(category);
@@ -56,7 +56,7 @@ router.put("/:id", requireAuth, requireAdmin, async (req: Request, res: Response
 // DELETE /api/categories/:id
 router.delete("/:id", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
-    await prisma.category.delete({ where: { id: req.params.id } });
+    await prisma.category.delete({ where: { id: req.params.id as string } });
     res.json({ success: true });
   } catch (error) {
     console.error("Delete category error:", error);

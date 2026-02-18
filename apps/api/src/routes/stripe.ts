@@ -175,13 +175,13 @@ router.post("/webhook", async (req: Request, res: Response) => {
 
       const items = pending.items as any[];
 
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         // Create the order
         await tx.order.create({
           data: {
             userId: pending.userId,
             userEmail: pending.userEmail,
-            items: pending.items,
+            items: pending.items as any,
             subtotal: pending.subtotal,
             tax: pending.tax,
             deliveryFee: pending.deliveryFee,

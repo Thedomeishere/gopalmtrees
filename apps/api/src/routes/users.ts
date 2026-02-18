@@ -39,7 +39,7 @@ router.put("/:id/role", requireAuth, requireAdmin, async (req: Request, res: Res
     }
 
     const user = await prisma.user.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { role },
       select: {
         id: true,
@@ -58,7 +58,7 @@ router.put("/:id/role", requireAuth, requireAdmin, async (req: Request, res: Res
 // DELETE /api/users/:id
 router.delete("/:id", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
-    await prisma.user.delete({ where: { id: req.params.id } });
+    await prisma.user.delete({ where: { id: req.params.id as string } });
     res.json({ success: true });
   } catch (error) {
     console.error("Delete user error:", error);
@@ -131,7 +131,7 @@ router.put("/me/addresses/:id", requireAuth, async (req: Request, res: Response)
     }
 
     const address = await prisma.address.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { label, street, unit, city, state, zip, isDefault },
     });
     res.json(address);
@@ -144,7 +144,7 @@ router.put("/me/addresses/:id", requireAuth, async (req: Request, res: Response)
 // DELETE /api/users/me/addresses/:id
 router.delete("/me/addresses/:id", requireAuth, async (req: Request, res: Response) => {
   try {
-    await prisma.address.delete({ where: { id: req.params.id } });
+    await prisma.address.delete({ where: { id: req.params.id as string } });
     res.json({ success: true });
   } catch (error) {
     console.error("Delete address error:", error);

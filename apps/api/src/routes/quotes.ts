@@ -56,7 +56,7 @@ router.put("/:id", requireAuth, requireAdmin, async (req: Request, res: Response
     const { status, adminResponse, estimatedPrice } = req.body;
 
     const quote = await prisma.quote.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: {
         ...(status && { status }),
         ...(adminResponse !== undefined && { adminResponse }),

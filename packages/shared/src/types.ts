@@ -20,6 +20,7 @@ export interface UserProfile {
   photoURL?: string;
   role: UserRole;
   addresses: Address[];
+  pushTokens?: { id: string; token: string }[];
   stripeCustomerId?: string;
   notificationPreferences: NotificationPreferences;
   createdAt: string;
