@@ -1,0 +1,32 @@
+node_modules/
+dist/
+.expo/
+*.local
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+.turbo/
+functions/dist/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Native
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+ios/
+android/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
