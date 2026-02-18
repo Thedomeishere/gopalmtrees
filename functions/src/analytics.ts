@@ -1,5 +1,6 @@
 import { scheduler } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 
 export const aggregateDailyStats = scheduler.onSchedule(
   {
@@ -19,8 +20,8 @@ export const aggregateDailyStats = scheduler.onSchedule(
     // Get orders for yesterday
     const ordersSnapshot = await db
       .collection("orders")
-      .where("createdAt", ">=", admin.firestore.Timestamp.fromDate(startOfDay))
-      .where("createdAt", "<=", admin.firestore.Timestamp.fromDate(endOfDay))
+      .where("createdAt", ">=", Timestamp.fromDate(startOfDay))
+      .where("createdAt", "<=", Timestamp.fromDate(endOfDay))
       .get();
 
     let revenue = 0;
@@ -50,8 +51,8 @@ export const aggregateDailyStats = scheduler.onSchedule(
     // Get new customers for yesterday
     const newCustomers = await db
       .collection("users")
-      .where("createdAt", ">=", admin.firestore.Timestamp.fromDate(startOfDay))
-      .where("createdAt", "<=", admin.firestore.Timestamp.fromDate(endOfDay))
+      .where("createdAt", ">=", Timestamp.fromDate(startOfDay))
+      .where("createdAt", "<=", Timestamp.fromDate(endOfDay))
       .where("role", "==", "customer")
       .count()
       .get();

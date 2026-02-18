@@ -1,12 +1,13 @@
 import { https } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
-
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: "2025-02-24.acacia",
+  });
+}
 
 export const stripeWebhook = https.onRequest(async (req, res) => {
   if (req.method !== "POST") {
@@ -22,7 +23,8 @@ export const stripeWebhook = https.onRequest(async (req, res) => {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+    event = getStripe().webhooks.constructEvent(req.rawBody, sig, endpointSecret);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Webhook signature verification failed:", message);
@@ -52,7 +54,7 @@ export const stripeWebhook = https.onRequest(async (req, res) => {
 
       // Create the order
       const orderRef = db.collection("orders").doc();
-      const now = admin.firestore.FieldValue.serverTimestamp();
+      const now = FieldValue.serverTimestamp();
 
       await orderRef.set({
         userId: pending.userId,
@@ -67,7 +69,7 @@ export const stripeWebhook = https.onRequest(async (req, res) => {
         statusHistory: [
           {
             status: "confirmed",
-            timestamp: admin.firestore.Timestamp.now(),
+            timestamp: Timestamp.now(),
             note: "Payment received",
           },
         ],

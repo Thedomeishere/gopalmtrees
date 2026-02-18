@@ -1,5 +1,6 @@
 import { identity } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 export const onUserCreated = identity.beforeUserCreated(async (event) => {
   const user = event.data!;
@@ -18,8 +19,8 @@ export const onUserCreated = identity.beforeUserCreated(async (event) => {
       promotions: true,
       quoteResponses: true,
     },
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   };
 
   await db.collection("users").doc(user.uid).set(userDoc);

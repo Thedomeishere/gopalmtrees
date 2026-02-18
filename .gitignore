@@ -30,3 +30,7 @@ android/
 *.swp
 *.swo
 .DS_Store
+firestore-debug.log
+ui-debug.log
+firebase-debug.log
+seed/

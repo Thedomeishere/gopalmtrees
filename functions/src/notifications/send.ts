@@ -1,5 +1,6 @@
 import { https } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 interface SendNotificationData {
   title: string;
@@ -84,7 +85,7 @@ export const sendPushNotification = https.onCall(async (request) => {
     data: data.data || {},
     targetUserIds: data.targetUserIds || [],
     broadcast: data.broadcast,
-    sentAt: admin.firestore.FieldValue.serverTimestamp(),
+    sentAt: FieldValue.serverTimestamp(),
     sentBy: uid,
   });
 

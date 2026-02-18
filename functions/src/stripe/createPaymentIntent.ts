@@ -1,10 +1,13 @@
 import { https } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: "2025-02-24.acacia",
+  });
+}
 
 const TAX_RATES: Record<string, number> = {
   NY: 0.08,
@@ -110,7 +113,7 @@ export const createPaymentIntent = https.onCall(async (request) => {
   let stripeCustomerId = userDoc.data()?.stripeCustomerId;
 
   if (!stripeCustomerId) {
-    const customer = await stripe.customers.create({
+    const customer = await getStripe().customers.create({
       email: userDoc.data()?.email,
       metadata: { firebaseUid: uid },
     });
@@ -119,7 +122,7 @@ export const createPaymentIntent = https.onCall(async (request) => {
   }
 
   // Create PaymentIntent
-  const paymentIntent = await stripe.paymentIntents.create({
+  const paymentIntent = await getStripe().paymentIntents.create({
     amount: amountInCents,
     currency: "usd",
     customer: stripeCustomerId,
@@ -144,7 +147,7 @@ export const createPaymentIntent = https.onCall(async (request) => {
       total,
       shippingAddress: data.shippingAddress,
       deliveryDate: data.deliveryDate || null,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
 
   return {

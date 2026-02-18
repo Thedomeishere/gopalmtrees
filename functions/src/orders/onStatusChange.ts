@@ -1,5 +1,6 @@
 import { firestore } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 const STATUS_MESSAGES: Record<string, string> = {
   confirmed: "Your order has been confirmed! We're getting it ready.",
@@ -68,7 +69,7 @@ export const onOrderStatusChange = firestore.onDocumentUpdated(
           .collection("users")
           .doc(userId)
           .update({
-            fcmTokens: admin.firestore.FieldValue.arrayRemove(...invalidTokens),
+            fcmTokens: FieldValue.arrayRemove(...invalidTokens),
           });
       }
     } catch (error) {
