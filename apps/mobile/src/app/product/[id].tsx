@@ -41,7 +41,7 @@ export default function ProductDetailScreen() {
   const loadProduct = async () => {
     try {
       const snap = await getDoc(doc(db, "products", id));
-      if (snap.exists()) {
+      if (snap.exists) {
         const p = { id: snap.id, ...snap.data() } as Product;
         setProduct(p);
         if (p.sizes.length > 0) setSelectedSize(p.sizes[0]);
@@ -57,7 +57,7 @@ export default function ProductDetailScreen() {
     if (!user) return;
     try {
       const snap = await getDoc(doc(db, `users/${user.uid}/wishlist`, id));
-      setIsWishlisted(snap.exists());
+      setIsWishlisted(snap.exists);
     } catch {}
   };
 

@@ -1,9 +1,8 @@
 import React, { createContext, useEffect, useState, useCallback, useRef } from "react";
-import { doc, getDoc, setDoc } from "@react-native-firebase/firestore";
+import { doc, getDoc, setDoc, Timestamp } from "@react-native-firebase/firestore";
 import { db } from "@/services/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import type { CartItem } from "@palmtree/shared";
-import { Timestamp } from "@react-native-firebase/firestore";
 
 interface CartContextType {
   items: CartItem[];
@@ -43,8 +42,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const loadCart = async () => {
       try {
         const cartDoc = await getDoc(doc(db, "carts", user.uid));
-        if (cartDoc.exists()) {
-          setItems(cartDoc.data().items || []);
+        if (cartDoc.exists) {
+          const data = cartDoc.data();
+          setItems(data?.items || []);
         }
       } catch (error) {
         console.error("Error loading cart:", error);

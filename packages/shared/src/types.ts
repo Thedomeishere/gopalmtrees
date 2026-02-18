@@ -1,4 +1,13 @@
-import { Timestamp } from "firebase/firestore";
+// Use a generic Timestamp type so the shared package doesn't depend on Firebase
+export interface Timestamp {
+  seconds: number;
+  nanoseconds: number;
+  toDate(): Date;
+  toMillis(): number;
+  isEqual(other: Timestamp): boolean;
+  toJSON(): { seconds: number; nanoseconds: number; type: string };
+  valueOf(): string;
+}
 
 // ─── User ────────────────────────────────────────────────────
 export interface Address {

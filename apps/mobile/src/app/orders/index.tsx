@@ -124,7 +124,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textSecondary,
     marginTop: spacing.sm,
-    numberOfLines: 1,
   },
   orderFooter: {
     flexDirection: "row",

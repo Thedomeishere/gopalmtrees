@@ -9,8 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { httpsCallable } from "@react-native-firebase/functions";
-import { getFunctions } from "@react-native-firebase/functions";
+import { httpsCallable, getFunctions } from "@react-native-firebase/functions";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { colors, spacing, borderRadius, fontSize } from "@/theme";

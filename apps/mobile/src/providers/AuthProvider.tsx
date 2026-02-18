@@ -1,8 +1,11 @@
 import React, { createContext, useEffect, useState, useCallback } from "react";
-import { onAuthStateChanged, signOut as firebaseSignOut, type User } from "@react-native-firebase/auth";
+import { onAuthStateChanged, signOut as firebaseSignOut } from "@react-native-firebase/auth";
+import { type FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { doc, getDoc } from "@react-native-firebase/firestore";
 import { auth, db } from "@/services/firebase";
 import type { UserProfile } from "@palmtree/shared";
+
+type User = FirebaseAuthTypes.User;
 
 interface AuthContextType {
   user: User | null;
@@ -29,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const docRef = doc(db, "users", uid);
       const snap = await getDoc(docRef);
-      if (snap.exists()) {
+      if (snap.exists) {
         setProfile({ id: snap.id, ...snap.data() } as UserProfile);
       }
     } catch (error) {

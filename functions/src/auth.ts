@@ -1,7 +1,8 @@
-import { auth } from "firebase-functions/v2";
+import { identity } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 
-export const onUserCreated = auth.user().onCreate(async (user) => {
+export const onUserCreated = identity.beforeUserCreated(async (event) => {
+  const user = event.data!;
   const db = admin.firestore();
 
   const userDoc: Record<string, unknown> = {

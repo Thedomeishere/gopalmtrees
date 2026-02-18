@@ -34,7 +34,7 @@ export default function QuoteDetailScreen() {
   const loadQuote = async () => {
     try {
       const snap = await getDoc(doc(db, "quotes", id));
-      if (snap.exists()) {
+      if (snap.exists) {
         setQuote({ id: snap.id, ...snap.data() } as Quote);
       }
     } catch (error) {

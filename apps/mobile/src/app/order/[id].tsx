@@ -43,7 +43,7 @@ export default function OrderDetailScreen() {
   const loadOrder = async () => {
     try {
       const snap = await getDoc(doc(db, "orders", id));
-      if (snap.exists()) {
+      if (snap.exists) {
         setOrder({ id: snap.id, ...snap.data() } as Order);
       }
     } catch (error) {
