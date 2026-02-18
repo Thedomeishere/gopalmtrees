@@ -11,7 +11,8 @@
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
     "emulators": "firebase emulators:start",
-    "emulators:seed": "firebase emulators:start --import=./seed --export-on-exit=./seed"
+    "emulators:seed": "firebase emulators:start --import=./seed --export-on-exit=./seed",
+    "seed": "pnpm --dir scripts run seed"
   },
   "devDependencies": {
     "turbo": "^2.3.3",
