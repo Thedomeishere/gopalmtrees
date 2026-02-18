@@ -106,7 +106,7 @@ export default function SignInScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* Social sign-in buttons hidden - OAuth not available without Firebase Auth */}
+        {/* Social sign-in — requires OAuth implementation */}
         {/* <View style={styles.divider}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>or</Text>

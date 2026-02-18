@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { prisma } from "./prisma.js";
+import type { OrderItem } from "./types.js";
 
 export function startCronJobs() {
   // Aggregate daily stats at 2 AM ET
@@ -38,7 +39,7 @@ export async function aggregateDailyStats() {
     revenue += order.total;
     orderCount++;
 
-    const items = order.items as any[];
+    const items = (order.items as unknown) as OrderItem[];
     for (const item of items) {
       if (!productCounts[item.productId]) {
         productCounts[item.productId] = { name: item.productName, quantity: 0 };

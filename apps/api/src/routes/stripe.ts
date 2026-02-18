@@ -1,7 +1,9 @@
 import { Router, Request, Response } from "express";
+import type { Prisma } from "@prisma/client";
 import Stripe from "stripe";
 import { prisma } from "../prisma.js";
 import { requireAuth } from "../middleware/auth.js";
+import type { OrderItem } from "../types.js";
 
 const TAX_RATES: Record<string, number> = {
   NY: 0.08,
@@ -34,7 +36,7 @@ router.post("/create-payment-intent", requireAuth, async (req: Request, res: Res
 
     // Server-side price validation
     let subtotal = 0;
-    const validatedItems: any[] = [];
+    const validatedItems: OrderItem[] = [];
 
     for (const item of items) {
       const product = await prisma.product.findUnique({
@@ -115,12 +117,12 @@ router.post("/create-payment-intent", requireAuth, async (req: Request, res: Res
         id: paymentIntent.id,
         userId: uid,
         userEmail: user?.email || "",
-        items: validatedItems,
+        items: validatedItems as unknown as Prisma.InputJsonValue,
         subtotal,
         tax,
         deliveryFee,
         total,
-        shippingAddress,
+        shippingAddress: shippingAddress as Prisma.InputJsonValue,
         deliveryDate: deliveryDate || null,
       },
     });
@@ -173,7 +175,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
         break;
       }
 
-      const items = pending.items as any[];
+      const items = (pending.items as unknown) as OrderItem[];
 
       await prisma.$transaction(async (tx: any) => {
         // Create the order
@@ -181,12 +183,12 @@ router.post("/webhook", async (req: Request, res: Response) => {
           data: {
             userId: pending.userId,
             userEmail: pending.userEmail,
-            items: pending.items as any,
+            items: pending.items as Prisma.InputJsonValue,
             subtotal: pending.subtotal,
             tax: pending.tax,
             deliveryFee: pending.deliveryFee,
             total: pending.total,
-            shippingAddress: pending.shippingAddress as any,
+            shippingAddress: pending.shippingAddress as Prisma.InputJsonValue,
             deliveryDate: pending.deliveryDate ? new Date(pending.deliveryDate) : null,
             statusHistory: [
               {

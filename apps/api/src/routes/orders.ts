@@ -1,7 +1,9 @@
 import { Router, Request, Response } from "express";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 import { sendOrderStatusNotification } from "../services/notifications.js";
+import type { OrderStatusEntry } from "../types.js";
 
 const router = Router();
 
@@ -49,7 +51,7 @@ router.put("/:id/status", requireAuth, requireAdmin, async (req: Request, res: R
       return;
     }
 
-    const statusHistory = order.statusHistory as any[];
+    const statusHistory = (order.statusHistory as unknown) as OrderStatusEntry[];
     statusHistory.push({
       status,
       timestamp: new Date().toISOString(),
@@ -60,7 +62,7 @@ router.put("/:id/status", requireAuth, requireAdmin, async (req: Request, res: R
       where: { id: req.params.id as string },
       data: {
         currentStatus: status,
-        statusHistory,
+        statusHistory: statusHistory as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -89,7 +91,7 @@ router.post("/:id/refund", requireAuth, requireAdmin, async (req: Request, res: 
       return;
     }
 
-    const statusHistory = order.statusHistory as any[];
+    const statusHistory = (order.statusHistory as unknown) as OrderStatusEntry[];
     statusHistory.push({
       status: "refunded",
       timestamp: new Date().toISOString(),
@@ -101,7 +103,7 @@ router.post("/:id/refund", requireAuth, requireAdmin, async (req: Request, res: 
       data: {
         currentStatus: "refunded",
         refundAmount: amount,
-        statusHistory,
+        statusHistory: statusHistory as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -126,7 +128,7 @@ router.put("/bulk-status", requireAuth, requireAdmin, async (req: Request, res: 
     });
 
     const updates = orders.map((order) => {
-      const statusHistory = order.statusHistory as any[];
+      const statusHistory = (order.statusHistory as unknown) as OrderStatusEntry[];
       statusHistory.push({
         status,
         timestamp: new Date().toISOString(),
@@ -134,7 +136,7 @@ router.put("/bulk-status", requireAuth, requireAdmin, async (req: Request, res: 
       });
       return prisma.order.update({
         where: { id: order.id },
-        data: { currentStatus: status, statusHistory },
+        data: { currentStatus: status, statusHistory: statusHistory as unknown as Prisma.InputJsonValue },
       });
     });
 
