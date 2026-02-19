@@ -63,4 +63,4 @@ ENV NODE_ENV=production
 EXPOSE 3001
 
 # Run migrations then start the server
-CMD cd apps/api && npx prisma migrate deploy && cd /app && node apps/api/dist/index.js
+CMD ["sh", "-c", "cd /app/apps/api && npx prisma migrate deploy && node /app/apps/api/dist/index.js"]
