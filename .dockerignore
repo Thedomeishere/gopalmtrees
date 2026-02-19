@@ -1,0 +1,19 @@
+node_modules
+dist
+.expo
+.turbo
+.git
+.env
+.env.*
+*.log
+
+# Mobile app not needed for deployment
+apps/mobile
+
+# Uploads (served from Railway volume)
+uploads
+
+# Dev/build artifacts
+.DS_Store
+*.tsbuildinfo
+coverage

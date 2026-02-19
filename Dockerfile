@@ -1,0 +1,64 @@
+# ── Stage 1: Base ─────────────────────────────────────────────
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+WORKDIR /app
+
+# Copy workspace config + all package.json files for dependency install
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages/shared/package.json packages/shared/
+COPY apps/api/package.json apps/api/
+COPY apps/admin/package.json apps/admin/
+
+RUN pnpm install --frozen-lockfile
+
+# ── Stage 2: Builder ─────────────────────────────────────────
+FROM base AS builder
+WORKDIR /app
+
+# Copy all source (except what .dockerignore excludes)
+COPY packages/shared/ packages/shared/
+COPY apps/api/ apps/api/
+COPY apps/admin/ apps/admin/
+
+# Build shared → admin → prisma generate → API
+RUN pnpm --filter @palmtree/shared build
+RUN pnpm --filter @palmtree/admin build
+RUN pnpm --dir apps/api db:generate
+RUN pnpm --filter @palmtree/api build
+
+# ── Stage 3: Runner ──────────────────────────────────────────
+FROM node:20-alpine AS runner
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+WORKDIR /app
+
+# Copy workspace config + all package.json files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/shared/package.json packages/shared/
+COPY apps/api/package.json apps/api/
+COPY apps/admin/package.json apps/admin/
+
+# Install all deps (need prisma CLI for migrate deploy)
+RUN pnpm install --frozen-lockfile
+
+# Copy built shared package
+COPY --from=builder /app/packages/shared/dist/ packages/shared/dist/
+
+# Copy built API
+COPY --from=builder /app/apps/api/dist/ apps/api/dist/
+
+# Copy admin dist into API's admin-dist directory
+COPY --from=builder /app/apps/admin/dist/ apps/api/admin-dist/
+
+# Copy Prisma schema, migrations, and generated client
+COPY --from=builder /app/apps/api/prisma/ apps/api/prisma/
+COPY --from=builder /app/apps/api/node_modules/.prisma/ apps/api/node_modules/.prisma/
+COPY --from=builder /app/apps/api/node_modules/@prisma/ apps/api/node_modules/@prisma/
+
+# Create uploads directory (Railway volume will mount here)
+RUN mkdir -p apps/api/uploads
+
+ENV NODE_ENV=production
+EXPOSE 3001
+
+# Run migrations then start the server
+CMD cd apps/api && npx prisma migrate deploy && cd /app && node apps/api/dist/index.js
