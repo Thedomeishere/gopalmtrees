@@ -31,6 +31,7 @@ function openDirections(
   const url = Platform.select({
     ios: `maps:0,0?q=${fullAddress}`,
     android: `geo:${latitude},${longitude}?q=${fullAddress}`,
+    web: `https://www.google.com/maps/search/?api=1&query=${fullAddress}`,
   });
   if (url) {
     Linking.openURL(url);

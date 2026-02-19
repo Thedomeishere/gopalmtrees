@@ -58,15 +58,24 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Serve admin SPA in production
+// Serve SPAs in production
 if (process.env.NODE_ENV === "production") {
   const adminDistPath = path.join(__dirname, "..", "admin-dist");
-  app.use(express.static(adminDistPath));
+  const shopDistPath = path.join(__dirname, "..", "shop-dist");
+
+  // Admin dashboard at /admin
+  app.use("/admin", express.static(adminDistPath));
+  app.get("/admin/*", (req, res) => {
+    res.sendFile(path.join(adminDistPath, "index.html"));
+  });
+
+  // Customer storefront at / (Expo Web static export)
+  app.use(express.static(shopDistPath));
   app.get("*", (req, res) => {
     if (req.path.startsWith("/api/") || req.path.startsWith("/uploads/")) {
       return res.status(404).json({ error: "Not found" });
     }
-    res.sendFile(path.join(adminDistPath, "index.html"));
+    res.sendFile(path.join(shopDistPath, "index.html"));
   });
 }
 

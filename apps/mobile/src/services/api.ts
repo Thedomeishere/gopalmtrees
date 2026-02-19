@@ -1,15 +1,21 @@
-import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 import Constants from "expo-constants";
 
 const TOKEN_KEY = "auth_token";
 
-// In development, point to your machine's local IP
-// For production, this would be your API server URL
+// On web, use relative path (served by same Express server)
+// On native, use configured URL or localhost
 const API_BASE_URL =
-  Constants.expoConfig?.extra?.apiUrl || "http://localhost:3001/api";
+  Platform.OS === "web"
+    ? "/api"
+    : Constants.expoConfig?.extra?.apiUrl || "http://localhost:3001/api";
 
 export async function getToken(): Promise<string | null> {
   try {
+    if (Platform.OS === "web") {
+      return localStorage.getItem(TOKEN_KEY);
+    }
+    const SecureStore = await import("expo-secure-store");
     return await SecureStore.getItemAsync(TOKEN_KEY);
   } catch {
     return null;
@@ -17,10 +23,20 @@ export async function getToken(): Promise<string | null> {
 }
 
 export async function setToken(token: string): Promise<void> {
+  if (Platform.OS === "web") {
+    localStorage.setItem(TOKEN_KEY, token);
+    return;
+  }
+  const SecureStore = await import("expo-secure-store");
   await SecureStore.setItemAsync(TOKEN_KEY, token);
 }
 
 export async function removeToken(): Promise<void> {
+  if (Platform.OS === "web") {
+    localStorage.removeItem(TOKEN_KEY);
+    return;
+  }
+  const SecureStore = await import("expo-secure-store");
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 

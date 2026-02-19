@@ -7,9 +7,6 @@ dist
 .env.*
 *.log
 
-# Mobile app not needed for deployment
-apps/mobile
-
 # Uploads (served from Railway volume)
 uploads
 

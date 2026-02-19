@@ -8,6 +8,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.js
 COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
 COPY apps/admin/package.json apps/admin/
+COPY apps/mobile/package.json apps/mobile/
 
 RUN pnpm install --frozen-lockfile
 
@@ -19,10 +20,12 @@ WORKDIR /app
 COPY packages/shared/ packages/shared/
 COPY apps/api/ apps/api/
 COPY apps/admin/ apps/admin/
+COPY apps/mobile/ apps/mobile/
 
-# Build shared → admin → prisma generate → API
+# Build shared → admin → mobile web export → prisma generate → API
 RUN pnpm --filter @palmtree/shared build
 RUN pnpm --filter @palmtree/admin build
+RUN pnpm --dir apps/mobile npx expo export --platform web
 RUN pnpm --dir apps/api db:generate
 RUN pnpm --filter @palmtree/api build
 
@@ -49,6 +52,9 @@ COPY --from=builder /app/apps/api/src/ apps/api/src/
 
 # Copy admin dist into API's admin-dist directory
 COPY --from=builder /app/apps/admin/dist/ apps/api/admin-dist/
+
+# Copy mobile web export into API's shop-dist directory
+COPY --from=builder /app/apps/mobile/dist/ apps/api/shop-dist/
 
 # Copy Prisma schema and migrations
 COPY --from=builder /app/apps/api/prisma/ apps/api/prisma/
