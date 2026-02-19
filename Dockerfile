@@ -49,10 +49,11 @@ COPY --from=builder /app/apps/api/dist/ apps/api/dist/
 # Copy admin dist into API's admin-dist directory
 COPY --from=builder /app/apps/admin/dist/ apps/api/admin-dist/
 
-# Copy Prisma schema, migrations, and generated client
+# Copy Prisma schema and migrations
 COPY --from=builder /app/apps/api/prisma/ apps/api/prisma/
-COPY --from=builder /app/apps/api/node_modules/.prisma/ apps/api/node_modules/.prisma/
-COPY --from=builder /app/apps/api/node_modules/@prisma/ apps/api/node_modules/@prisma/
+
+# Generate Prisma client in the runner (avoids pnpm hoisting path issues)
+RUN pnpm --dir apps/api db:generate
 
 # Create uploads directory (Railway volume will mount here)
 RUN mkdir -p apps/api/uploads
