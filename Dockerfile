@@ -25,7 +25,7 @@ COPY apps/mobile/ apps/mobile/
 # Build shared → admin → mobile web export → prisma generate → API
 RUN pnpm --filter @palmtree/shared build
 RUN pnpm --filter @palmtree/admin build
-RUN pnpm --dir apps/mobile npx expo export --platform web
+RUN cd apps/mobile && npx expo export --platform web
 RUN pnpm --dir apps/api db:generate
 RUN pnpm --filter @palmtree/api build
 
