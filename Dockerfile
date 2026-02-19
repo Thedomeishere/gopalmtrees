@@ -43,8 +43,9 @@ RUN pnpm install --frozen-lockfile
 # Copy built shared package
 COPY --from=builder /app/packages/shared/dist/ packages/shared/dist/
 
-# Copy built API
+# Copy built API + source (source needed for seed script's tsx imports)
 COPY --from=builder /app/apps/api/dist/ apps/api/dist/
+COPY --from=builder /app/apps/api/src/ apps/api/src/
 
 # Copy admin dist into API's admin-dist directory
 COPY --from=builder /app/apps/admin/dist/ apps/api/admin-dist/
